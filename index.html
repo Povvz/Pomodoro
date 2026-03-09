@@ -563,7 +563,8 @@
   <div class="form-grid">
     <div class="form-group">
       <label>Date</label>
-      <input type="date" id="inputDate">
+      <input type="date" id="inputDate" onchange="checkDate()">
+      <div id="dateWarning" style="display:none;margin-top:0.4rem;font-size:0.65rem;color:var(--orange);letter-spacing:0.05em;">⚠ Session pour une autre date</div>
     </div>
     <div class="form-group">
       <label>Maths</label>
@@ -675,7 +676,12 @@ let customEnd = null;
 let pendingDelete = null;
 
 // ── Helpers ──────────────────────────────────────────────────
-function today() { return new Date().toISOString().split('T')[0]; }
+function today() {
+  return new Date().toLocaleDateString('fr-FR', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).split('/').reverse().join('-');
+}
 
 function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 
@@ -882,6 +888,20 @@ function updateTable() {
 
 function refresh() { updateStats(); buildChart(); updateTable(); }
 
+function checkDate() {
+  const val = document.getElementById('inputDate').value;
+  const warn = document.getElementById('dateWarning');
+  const btn  = document.getElementById('submitBtn');
+  if (val && val !== today()) {
+    warn.style.display = 'block';
+    warn.textContent = `⚠ Session pour le ${fmt(val)} — pas aujourd'hui`;
+    btn.textContent = `Enregistrer pour le ${fmt(val)}`;
+  } else {
+    warn.style.display = 'none';
+    btn.textContent = "Enregistrer";
+  }
+}
+
 // ── Add entry ─────────────────────────────────────────────────
 function addEntry() {
   const date = document.getElementById('inputDate').value || today();
@@ -915,6 +935,8 @@ function clearForm() {
   document.getElementById('inputNotes').value = '';
   document.getElementById('inputHumeur').value = 'Moyen';
   document.getElementById('inputDate').value = today();
+  document.getElementById('dateWarning').style.display = 'none';
+  document.getElementById('submitBtn').textContent = 'Enregistrer';
 }
 
 // ── Delete ─────────────────────────────────────────────────────
