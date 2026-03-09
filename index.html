@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Tracker — Première</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:      #0e0e0e;
+    --surface: #161616;
+    --border:  #2a2a2a;
+    --text:    #e8e2d9;
+    --muted:   #6b6560;
+    --accent:  #c8a96e;
+    --green:   #6fcf97;
+    --red:     #eb5757;
+    --blue:    #56a3f5;
+    --purple:  #bb87fc;
+    --orange:  #f2994a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 3rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+  }
+
+  .logo span {
+    font-style: italic;
+    color: var(--muted);
+    font-size: 0.9rem;
+    display: block;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.6rem;
+  }
+
+  .date-info {
+    text-align: right;
+    color: var(--muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  /* Stats */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.2rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card.green::before  { background: var(--green); }
+  .stat-card.accent::before { background: var(--accent); }
+  .stat-card.blue::before   { background: var(--blue); }
+  .stat-card.purple::before { background: var(--purple); }
+
+  .stat-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.4rem;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .stat-sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+  }
+
+  .tab {
+    padding: 0.6rem 1.5rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Period panel */
+  .period-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    padding: 1.2rem 1.5rem;
+    display: none;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .period-panel.visible { display: flex; }
+
+  .period-panel label {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-right: 0.4rem;
+  }
+
+  .period-panel input[type="date"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.45rem 0.8rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    outline: none;
+    color-scheme: dark;
+    transition: border-color 0.2s;
+  }
+
+  .period-panel input[type="date"]:focus { border-color: var(--accent); }
+
+  .period-presets { display: flex; gap: 0.5rem; margin-left: auto; }
+
+  .preset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 0.35rem 0.8rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .preset-btn:hover, .preset-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Chart */
+  .chart-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    margin-top: 1.5rem;
+  }
+
+  .chart-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .chart-title small {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  canvas { max-height: 280px; }
+
+  /* Form */
+  .form-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .form-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.6rem 0.8rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus { border-color: var(--accent); }
+
+  .form-group.full { grid-column: 1 / -1; }
+
+  .btn {
+    background: var(--accent);
+    color: #0e0e0e;
+    border: none;
+    padding: 0.7rem 2rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    font-weight: 500;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn.secondary {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    margin-left: 0.5rem;
+  }
+
+  .btn.danger {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid var(--red);
+    margin-left: 0.5rem;
+  }
+
+  .btn.small {
+    padding: 0.45rem 1rem;
+    font-size: 0.65rem;
+  }
+
+  /* History */
+  .history {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .history-header {
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    color: var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+
+  th {
+    text-align: left;
+    padding: 0.7rem 1rem;
+    background: var(--bg);
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(200,169,110,0.04); }
+
+  .pomo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(200,169,110,0.1);
+    color: var(--accent);
+    padding: 0.2rem 0.6rem;
+    font-size: 0.7rem;
+    border: 1px solid rgba(200,169,110,0.2);
+  }
+
+  .matiere-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  .humeur-badge {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+  }
+
+  .humeur-Top    { background: rgba(111,207,151,0.15); color: var(--green); }
+  .humeur-Bien   { background: rgba(86,163,245,0.15);  color: var(--blue); }
+  .humeur-Moyen  { background: rgba(242,153,74,0.2);   color: var(--orange); }
+  .humeur-Fatigue{ background: rgba(242,153,74,0.2);   color: var(--orange); }
+  .humeur-Nulle  { background: rgba(235,87,87,0.15);   color: var(--red); }
+
+  .delete-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+    width: 26px; height: 26px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .delete-btn:hover {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(235,87,87,0.08);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(14,14,14,0.9);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.visible { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 2rem;
+    max-width: 380px;
+    width: 90%;
+  }
+
+  .modal-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    color: var(--red);
+    margin-bottom: 0.8rem;
+  }
+
+  .modal-body {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+
+  .modal-actions { display: flex; gap: 0.5rem; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 2rem; right: 2rem;
+    padding: 0.8rem 1.5rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s;
+    font-family: 'DM Mono', monospace;
+    z-index: 999;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    body { padding: 1rem; }
+    .tabs { overflow-x: auto; }
+    .tab { white-space: nowrap; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    Pomodoro
+    <span>Suivi de travail — Première</span>
+  </div>
+  <div class="header-right">
+    <div class="date-info" id="currentDate"></div>
+    <div class="header-actions">
+      <button class="btn small secondary" onclick="exportJSON()">⬇ Exporter JSON</button>
+      <button class="btn small secondary" onclick="document.getElementById('importFile').click()">⬆ Importer JSON</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+    </div>
+  </div>
+</header>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card green">
+    <div class="stat-label">Aujourd'hui</div>
+    <div class="stat-value" id="statToday">0</div>
+    <div class="stat-sub">pomodoros</div>
+  </div>
+  <div class="stat-card accent">
+    <div class="stat-label">Cette semaine</div>
+    <div class="stat-value" id="statWeek">0</div>
+    <div class="stat-sub">pomodoros</div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">Ce mois</div>
+    <div class="stat-value" id="statMonth">0</div>
+    <div class="stat-sub">pomodoros</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-label">Record journée</div>
+    <div class="stat-value" id="statRecord">0</div>
+    <div class="stat-sub">pomodoros</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('semaine')">Cette semaine</button>
+  <button class="tab" onclick="switchTab('mois')">30 derniers jours</button>
+  <button class="tab" onclick="switchTab('matieres')">Par matière</button>
+  <button class="tab" onclick="switchTab('custom')">Période perso</button>
+</div>
+
+<!-- Period panel -->
+<div class="period-panel" id="periodPanel">
+  <div style="display:flex;align-items:center;gap:0.6rem;">
+    <label>Du</label>
+    <input type="date" id="customStart">
+    <span style="color:var(--muted)">→</span>
+    <label>au</label>
+    <input type="date" id="customEnd">
+  </div>
+  <div class="period-presets">
+    <button class="preset-btn" onclick="applyPreset(2, this)">2 sem.</button>
+    <button class="preset-btn" onclick="applyPreset(4, this)">4 sem.</button>
+    <button class="preset-btn" onclick="applyPreset(6, this)">6 sem.</button>
+    <button class="preset-btn" onclick="applyPreset(12, this)">3 mois</button>
+    <button class="preset-btn" onclick="applyPresetAll(this)">Tout</button>
+  </div>
+</div>
+
+<!-- Chart -->
+<div class="chart-container">
+  <div class="chart-title">
+    <span id="chartTitle">Pomodoros — Semaine en cours</span>
+    <small id="chartRange"></small>
+  </div>
+  <canvas id="mainChart"></canvas>
+</div>
+
+<!-- Form -->
+<div class="form-section">
+  <div class="form-title">Ajouter une session</div>
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="inputDate">
+    </div>
+    <div class="form-group">
+      <label>Maths</label>
+      <input type="number" id="inputMaths" min="0" value="0">
+    </div>
+    <div class="form-group">
+      <label>Physique-Chimie</label>
+      <input type="number" id="inputPC" min="0" value="0">
+    </div>
+    <div class="form-group">
+      <label>SES</label>
+      <input type="number" id="inputSES" min="0" value="0">
+    </div>
+    <div class="form-group">
+      <label>Français</label>
+      <input type="number" id="inputFR" min="0" value="0">
+    </div>
+    <div class="form-group">
+      <label>Histoire-Géo</label>
+      <input type="number" id="inputHG" min="0" value="0">
+    </div>
+    <div class="form-group">
+      <label>Allemand</label>
+      <input type="number" id="inputAL" min="0" value="0">
+    </div>
+    <div class="form-group">
+      <label>DaVinci</label>
+      <input type="number" id="inputDV" min="0" value="0">
+    </div>
+    <div class="form-group">
+      <label>Autre</label>
+      <input type="number" id="inputAU" min="0" value="0">
+    </div>
+    <div class="form-group">
+      <label>Humeur</label>
+      <select id="inputHumeur">
+        <option>Top</option>
+        <option>Bien</option>
+        <option selected>Moyen</option>
+        <option>Fatigue</option>
+        <option>Nulle</option>
+      </select>
+    </div>
+    <div class="form-group full">
+      <label>Notes</label>
+      <input type="text" id="inputNotes" placeholder="Réflexions du jour...">
+    </div>
+  </div>
+  <button class="btn" id="submitBtn" onclick="addEntry()">Enregistrer</button>
+  <button class="btn secondary" onclick="clearForm()">Effacer</button>
+</div>
+
+<!-- History -->
+<div class="history">
+  <div class="history-header">
+    <span>Historique</span>
+    <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted)" id="historyCount"></span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Total</th>
+        <th>Répartition</th>
+        <th>Humeur</th>
+        <th>Notes</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="historyBody">
+      <tr><td colspan="6" class="empty-state">Aucune session. Commence ce soir !</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal suppression -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-title">Supprimer cette session ?</div>
+    <div class="modal-body" id="deleteModalBody"></div>
+    <div class="modal-actions">
+      <button class="btn" style="background:var(--red);color:#fff" onclick="executeDelete()">Supprimer</button>
+      <button class="btn secondary" onclick="closeModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'pomodoro_povvz_v2';
+const MATIERES = [
+  { key: 'maths', label: 'Maths',          color: '#56a3f5' },
+  { key: 'pc',    label: 'Physique-Chimie', color: '#6fcf97' },
+  { key: 'ses',   label: 'SES',             color: '#f2c94c' },
+  { key: 'fr',    label: 'Français',        color: '#f2994a' },
+  { key: 'hg',    label: 'Histoire-Géo',    color: '#bb87fc' },
+  { key: 'al',    label: 'Allemand',        color: '#eb5757' },
+  { key: 'dv',    label: 'DaVinci',         color: '#c8a96e' },
+  { key: 'au',    label: 'Autre',           color: '#6b6560' },
+];
+
+let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let currentTab = 'semaine';
+let chart = null;
+let customStart = null;
+let customEnd = null;
+let pendingDelete = null;
+
+// ── Helpers ──────────────────────────────────────────────────
+function today() { return new Date().toISOString().split('T')[0]; }
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+function totalFor(e) { return MATIERES.reduce((s, m) => s + (e[m.key] || 0), 0); }
+
+function fmt(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function getWeekDates() {
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    return d.toISOString().split('T')[0];
+  });
+}
+
+function getLast30() {
+  return Array.from({ length: 30 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (29 - i));
+    return d.toISOString().split('T')[0];
+  });
+}
+
+function getRange(start, end) {
+  const dates = [];
+  const cur = new Date(start + 'T12:00:00');
+  const fin = new Date(end   + 'T12:00:00');
+  while (cur <= fin) {
+    dates.push(cur.toISOString().split('T')[0]);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
+// ── Stats ─────────────────────────────────────────────────────
+function updateStats() {
+  const t = today();
+  const te = data.find(e => e.date === t);
+  document.getElementById('statToday').textContent = te ? totalFor(te) : 0;
+
+  const wd = getWeekDates();
+  document.getElementById('statWeek').textContent =
+    data.filter(e => wd.includes(e.date)).reduce((s, e) => s + totalFor(e), 0);
+
+  const mo = t.slice(0, 7);
+  document.getElementById('statMonth').textContent =
+    data.filter(e => e.date?.startsWith(mo)).reduce((s, e) => s + totalFor(e), 0);
+
+  document.getElementById('statRecord').textContent =
+    data.length ? Math.max(...data.map(e => totalFor(e))) : 0;
+}
+
+// ── Chart ─────────────────────────────────────────────────────
+function buildChart() {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (chart) chart.destroy();
+
+  let labels, datasets;
+
+  if (currentTab === 'semaine') {
+    const dates = getWeekDates();
+    labels = dates.map(d => fmt(d));
+    const totals = dates.map(d => { const e = data.find(x => x.date === d); return e ? totalFor(e) : 0; });
+    document.getElementById('chartTitle').textContent = 'Pomodoros — Semaine en cours';
+    document.getElementById('chartRange').textContent = `${fmt(dates[0])} → ${fmt(dates[6])}`.toUpperCase();
+    datasets = [{
+      label: 'Pomodoros', data: totals,
+      borderColor: '#c8a96e', backgroundColor: 'rgba(200,169,110,0.08)',
+      pointBackgroundColor: dates.map(d => d === today() ? '#6fcf97' : '#c8a96e'),
+      pointRadius: dates.map(d => d === today() ? 7 : 5),
+      tension: 0.3, fill: true,
+    }];
+  }
+
+  else if (currentTab === 'mois') {
+    const dates = getLast30();
+    labels = dates.map(d => { const dd = new Date(d+'T12:00:00'); return dd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }); });
+    const totals = dates.map(d => { const e = data.find(x => x.date === d); return e ? totalFor(e) : 0; });
+    document.getElementById('chartTitle').textContent = 'Pomodoros — 30 derniers jours';
+    document.getElementById('chartRange').textContent = `${fmt(dates[0])} → ${fmt(dates[29])}`.toUpperCase();
+    datasets = [{
+      label: 'Pomodoros', data: totals,
+      borderColor: '#56a3f5', backgroundColor: 'rgba(86,163,245,0.06)',
+      pointBackgroundColor: '#56a3f5', pointRadius: 3, tension: 0.3, fill: true,
+    }];
+  }
+
+  else if (currentTab === 'matieres') {
+    const dates = getLast30();
+    labels = dates.map(d => { const dd = new Date(d+'T12:00:00'); return dd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }); });
+    document.getElementById('chartTitle').textContent = 'Pomodoros par matière — 30 jours';
+    document.getElementById('chartRange').textContent = 'RÉPARTITION';
+    datasets = MATIERES.map(m => ({
+      label: m.label,
+      data: dates.map(d => { const e = data.find(x => x.date === d); return e ? (e[m.key] || 0) : 0; }),
+      borderColor: m.color, backgroundColor: m.color + '15',
+      pointRadius: 2, tension: 0.3, fill: false,
+    })).filter(ds => ds.data.some(v => v > 0));
+    if (!datasets.length) datasets = [{ label: 'Aucune donnée', data: dates.map(() => 0), borderColor: '#2a2a2a' }];
+  }
+
+  else if (currentTab === 'custom') {
+    const start = customStart || (() => { const d = new Date(); d.setDate(d.getDate()-42); return d.toISOString().split('T')[0]; })();
+    const end   = customEnd || today();
+    const dates = getRange(start, end);
+    const tooMany = dates.length > 60;
+
+    let chartDates, chartLabels, chartTotals;
+
+    if (tooMany) {
+      const weeks = {};
+      dates.forEach(d => {
+        const dd = new Date(d+'T12:00:00');
+        const mon = new Date(dd);
+        mon.setDate(dd.getDate() - (dd.getDay() === 0 ? 6 : dd.getDay() - 1));
+        const key = mon.toISOString().split('T')[0];
+        if (!weeks[key]) weeks[key] = 0;
+        const e = data.find(x => x.date === d);
+        weeks[key] += e ? totalFor(e) : 0;
+      });
+      chartDates = Object.keys(weeks).sort();
+      chartLabels = chartDates.map(d => 'S. ' + fmt(d));
+      chartTotals = chartDates.map(d => weeks[d]);
+    } else {
+      chartDates = dates;
+      chartLabels = dates.map(d => { const dd = new Date(d+'T12:00:00'); return dd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }); });
+      chartTotals = dates.map(d => { const e = data.find(x => x.date === d); return e ? totalFor(e) : 0; });
+    }
+
+    const total = chartTotals.reduce((s, v) => s + v, 0);
+    labels = chartLabels;
+    document.getElementById('chartTitle').textContent = 'Pomodoros — Période personnalisée';
+    document.getElementById('chartRange').textContent = `${fmt(start)} → ${fmt(end)} · ${total} POMODOROS · ${total * 40} MIN`.toUpperCase();
+    datasets = [{
+      label: 'Pomodoros', data: chartTotals,
+      borderColor: '#bb87fc', backgroundColor: 'rgba(187,135,252,0.07)',
+      pointBackgroundColor: '#bb87fc', pointRadius: tooMany ? 3 : 4,
+      tension: 0.3, fill: true,
+    }];
+  }
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          display: currentTab === 'matieres',
+          labels: { color: '#6b6560', font: { family: 'DM Mono', size: 10 }, boxWidth: 10 }
+        },
+        tooltip: {
+          backgroundColor: '#161616', borderColor: '#2a2a2a', borderWidth: 1,
+          titleColor: '#c8a96e', bodyColor: '#e8e2d9',
+          titleFont: { family: 'DM Serif Display', size: 13 },
+          bodyFont: { family: 'DM Mono', size: 11 },
+          callbacks: { label: ctx => ` ${ctx.parsed.y} pomodoro${ctx.parsed.y > 1 ? 's' : ''} (${ctx.parsed.y * 40} min)` }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#6b6560', font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 10 }, grid: { color: '#1e1e1e' } },
+        y: { beginAtZero: true, ticks: { color: '#6b6560', font: { family: 'DM Mono', size: 10 }, stepSize: 1 }, grid: { color: '#1e1e1e' } }
+      }
+    }
+  });
+}
+
+// ── Table ─────────────────────────────────────────────────────
+function updateTable() {
+  const tbody = document.getElementById('historyBody');
+  const sorted = [...data].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  document.getElementById('historyCount').textContent = `${sorted.length} session${sorted.length > 1 ? 's' : ''}`;
+
+  if (!sorted.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Aucune session. Commence ce soir !</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = sorted.map(e => {
+    const total = totalFor(e);
+    const rep = MATIERES.filter(m => e[m.key] > 0)
+      .map(m => `<span class="matiere-dot" style="background:${m.color}"></span>${m.label} ×${e[m.key]}`)
+      .join('&nbsp;&nbsp;');
+    return `
+      <tr>
+        <td>${fmt(e.date)}</td>
+        <td><span class="pomo-badge">🍅 ${total}</span></td>
+        <td style="font-size:0.7rem;color:#6b6560">${rep || '—'}</td>
+        <td><span class="humeur-badge humeur-${e.humeur || 'Moyen'}">${e.humeur || '—'}</span></td>
+        <td style="color:#6b6560;font-size:0.72rem">${e.notes || '—'}</td>
+        <td><button class="delete-btn" onclick="askDelete('${e.date}')">✕</button></td>
+      </tr>`;
+  }).join('');
+}
+
+function refresh() { updateStats(); buildChart(); updateTable(); }
+
+// ── Add entry ─────────────────────────────────────────────────
+function addEntry() {
+  const date = document.getElementById('inputDate').value || today();
+  const entry = {
+    date,
+    maths: +document.getElementById('inputMaths').value || 0,
+    pc:    +document.getElementById('inputPC').value    || 0,
+    ses:   +document.getElementById('inputSES').value   || 0,
+    fr:    +document.getElementById('inputFR').value    || 0,
+    hg:    +document.getElementById('inputHG').value    || 0,
+    al:    +document.getElementById('inputAL').value    || 0,
+    dv:    +document.getElementById('inputDV').value    || 0,
+    au:    +document.getElementById('inputAU').value    || 0,
+    humeur: document.getElementById('inputHumeur').value,
+    notes:  document.getElementById('inputNotes').value,
+  };
+
+  const idx = data.findIndex(e => e.date === date);
+  if (idx >= 0) data[idx] = entry;
+  else data.push(entry);
+
+  save();
+  refresh();
+  clearForm();
+  showToast('Session enregistrée ✓');
+}
+
+function clearForm() {
+  ['inputMaths','inputPC','inputSES','inputFR','inputHG','inputAL','inputDV','inputAU']
+    .forEach(id => document.getElementById(id).value = 0);
+  document.getElementById('inputNotes').value = '';
+  document.getElementById('inputHumeur').value = 'Moyen';
+  document.getElementById('inputDate').value = today();
+}
+
+// ── Delete ─────────────────────────────────────────────────────
+function askDelete(date) {
+  pendingDelete = date;
+  document.getElementById('deleteModalBody').textContent =
+    `Supprimer la session du ${fmt(date)} ? Cette action est irréversible.`;
+  document.getElementById('deleteModal').classList.add('visible');
+}
+
+function executeDelete() {
+  if (!pendingDelete) return;
+  data = data.filter(e => e.date !== pendingDelete);
+  save();
+  refresh();
+  closeModal();
+  showToast('Session supprimée');
+}
+
+function closeModal() {
+  pendingDelete = null;
+  document.getElementById('deleteModal').classList.remove('visible');
+}
+
+// ── Export / Import JSON ───────────────────────────────────────
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pomodoro_backup_${today()}.json`;
+  a.click();
+  showToast('Exporté ✓');
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error('Format invalide');
+      // Fusionner avec les données existantes (priorité à l'import)
+      imported.forEach(entry => {
+        const idx = data.findIndex(d => d.date === entry.date);
+        if (idx >= 0) data[idx] = entry;
+        else data.push(entry);
+      });
+      save();
+      refresh();
+      showToast(`${imported.length} sessions importées ✓`);
+    } catch(err) {
+      showToast('Erreur : fichier JSON invalide', true);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ── Tabs ──────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  const tabs = ['semaine','mois','matieres','custom'];
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', tabs[i] === tab));
+  const panel = document.getElementById('periodPanel');
+  if (tab === 'custom') {
+    panel.classList.add('visible');
+    if (!document.getElementById('customStart').value) {
+      const s = new Date(); s.setDate(s.getDate() - 42);
+      customStart = s.toISOString().split('T')[0];
+      customEnd   = today();
+      document.getElementById('customStart').value = customStart;
+      document.getElementById('customEnd').value   = customEnd;
+    }
+  } else {
+    panel.classList.remove('visible');
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  }
+  buildChart();
+}
+
+function applyPreset(weeks, btn) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const s = new Date(); s.setDate(s.getDate() - weeks * 7);
+  customStart = s.toISOString().split('T')[0];
+  customEnd   = today();
+  document.getElementById('customStart').value = customStart;
+  document.getElementById('customEnd').value   = customEnd;
+  buildChart();
+}
+
+function applyPresetAll(btn) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (!data.length) return;
+  const dates = data.map(e => e.date).filter(Boolean).sort();
+  customStart = dates[0];
+  customEnd   = today();
+  document.getElementById('customStart').value = customStart;
+  document.getElementById('customEnd').value   = customEnd;
+  buildChart();
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(msg, error = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = error ? 'var(--red)' : 'var(--green)';
+  t.style.color = error ? '#fff' : '#0e0e0e';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Init ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('inputDate').value = today();
+  document.getElementById('currentDate').innerHTML =
+    new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    + '<br>' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+  document.getElementById('customStart').addEventListener('change', e => {
+    customStart = e.target.value;
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    if (currentTab === 'custom') buildChart();
+  });
+  document.getElementById('customEnd').addEventListener('change', e => {
+    customEnd = e.target.value;
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    if (currentTab === 'custom') buildChart();
+  });
+
+  refresh();
+});
+</script>
+</body>
+</html>
