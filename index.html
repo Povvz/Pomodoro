@@ -905,8 +905,7 @@ function checkDate() {
 // ── Add entry ─────────────────────────────────────────────────
 function addEntry() {
   const date = document.getElementById('inputDate').value || today();
-  const entry = {
-    date,
+  const newVals = {
     maths: +document.getElementById('inputMaths').value || 0,
     pc:    +document.getElementById('inputPC').value    || 0,
     ses:   +document.getElementById('inputSES').value   || 0,
@@ -915,18 +914,29 @@ function addEntry() {
     al:    +document.getElementById('inputAL').value    || 0,
     dv:    +document.getElementById('inputDV').value    || 0,
     au:    +document.getElementById('inputAU').value    || 0,
-    humeur: document.getElementById('inputHumeur').value,
-    notes:  document.getElementById('inputNotes').value,
   };
 
   const idx = data.findIndex(e => e.date === date);
-  if (idx >= 0) data[idx] = entry;
-  else data.push(entry);
+
+  if (idx >= 0) {
+    // Fusionner : additionner les pomodoros, garder la dernière humeur/notes si renseignés
+    const existing = data[idx];
+    MATIERES.forEach(m => { existing[m.key] = (existing[m.key] || 0) + (newVals[m.key] || 0); });
+    const newHumeur = document.getElementById('inputHumeur').value;
+    const newNotes  = document.getElementById('inputNotes').value.trim();
+    existing.humeur = newHumeur;
+    if (newNotes) existing.notes = existing.notes ? existing.notes + ' · ' + newNotes : newNotes;
+    showToast('Session fusionnée avec celle du jour ✓');
+  } else {
+    const humeur = document.getElementById('inputHumeur').value;
+    const notes  = document.getElementById('inputNotes').value;
+    data.push({ date, ...newVals, humeur, notes });
+    showToast('Session enregistrée ✓');
+  }
 
   save();
   refresh();
   clearForm();
-  showToast('Session enregistrée ✓');
 }
 
 function clearForm() {
